@@ -1,38 +1,70 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import {
+  datasets, datasetAnalysis, insights, verificationLogs,
+  type Dataset, type InsertDataset,
+  type DatasetAnalysis, type InsertDatasetAnalysis,
+  type Insight, type InsertInsight,
+  type VerificationLog, type InsertVerificationLog
+} from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getDatasets(): Promise<Dataset[]>;
+  getDataset(id: number): Promise<Dataset | undefined>;
+  createDataset(dataset: InsertDataset): Promise<Dataset>;
+  
+  createAnalysis(analysis: InsertDatasetAnalysis): Promise<DatasetAnalysis>;
+  getAnalysis(datasetId: number): Promise<DatasetAnalysis | undefined>;
+  
+  createInsight(insight: InsertInsight): Promise<Insight>;
+  getInsights(datasetId: number): Promise<Insight[]>;
+  
+  createVerificationLog(log: InsertVerificationLog): Promise<VerificationLog>;
+  getVerificationLogs(datasetId: number): Promise<VerificationLog[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getDatasets(): Promise<Dataset[]> {
+    return await db.select().from(datasets);
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getDataset(id: number): Promise<Dataset | undefined> {
+    const [dataset] = await db.select().from(datasets).where(eq(datasets.id, id));
+    return dataset;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createDataset(dataset: InsertDataset): Promise<Dataset> {
+    const [created] = await db.insert(datasets).values(dataset).returning();
+    return created;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async createAnalysis(analysis: InsertDatasetAnalysis): Promise<DatasetAnalysis> {
+    const [created] = await db.insert(datasetAnalysis).values(analysis).returning();
+    return created;
+  }
+
+  async getAnalysis(datasetId: number): Promise<DatasetAnalysis | undefined> {
+    const [analysis] = await db.select().from(datasetAnalysis).where(eq(datasetAnalysis.datasetId, datasetId));
+    return analysis;
+  }
+
+  async createInsight(insight: InsertInsight): Promise<Insight> {
+    const [created] = await db.insert(insights).values(insight).returning();
+    return created;
+  }
+
+  async getInsights(datasetId: number): Promise<Insight[]> {
+    return await db.select().from(insights).where(eq(insights.datasetId, datasetId));
+  }
+
+  async createVerificationLog(log: InsertVerificationLog): Promise<VerificationLog> {
+    const [created] = await db.insert(verificationLogs).values(log).returning();
+    return created;
+  }
+
+  async getVerificationLogs(datasetId: number): Promise<VerificationLog[]> {
+    return await db.select().from(verificationLogs).where(eq(verificationLogs.datasetId, datasetId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
