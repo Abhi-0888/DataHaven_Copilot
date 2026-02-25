@@ -7,8 +7,7 @@ export function useDatasets() {
     queryFn: async () => {
       const res = await fetch(api.datasets.list.path, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch datasets");
-      const data = await res.json();
-      return api.datasets.list.responses[200].parse(data);
+      return res.json();
     },
   });
 }
@@ -21,8 +20,7 @@ export function useDataset(id: number) {
       const res = await fetch(url, { credentials: "include" });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch dataset");
-      const data = await res.json();
-      return api.datasets.get.responses[200].parse(data);
+      return res.json();
     },
     enabled: !!id,
   });
@@ -38,13 +36,10 @@ export function useUploadDataset() {
         credentials: "include",
       });
       if (!res.ok) {
-        if (res.status === 400) {
-          const error = api.datasets.upload.responses[400].parse(await res.json());
-          throw new Error(error.message);
-        }
-        throw new Error("Failed to upload dataset");
+        const err = await res.json().catch(() => ({ message: "Upload failed" }));
+        throw new Error(err.message || "Upload failed");
       }
-      return api.datasets.upload.responses[201].parse(await res.json());
+      return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.datasets.list.path] }),
   });
@@ -60,10 +55,12 @@ export function useAnalyzeDataset() {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to analyze dataset");
-      return api.datasets.analyze.responses[200].parse(await res.json());
+      return res.json();
     },
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: [api.datasets.report.path, id] });
+      queryClient.invalidateQueries({ queryKey: ["ledger", id] });
+      queryClient.invalidateQueries({ queryKey: ["timeline", id] });
     },
   });
 }
@@ -74,9 +71,88 @@ export function useDatasetReport(id: number) {
     queryFn: async () => {
       const url = buildUrl(api.datasets.report.path, { id });
       const res = await fetch(url, { credentials: "include" });
-      if (res.status === 404) return null;
-      if (!res.ok) throw new Error("Failed to fetch dataset report");
-      return api.datasets.report.responses[200].parse(await res.json());
+      if (!res.ok) throw new Error("Failed to fetch report");
+      return res.json();
+    },
+    enabled: !!id,
+  });
+}
+
+export function useTimeline(id: number) {
+  return useQuery({
+    queryKey: ["timeline", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/datasets/${id}/timeline`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch timeline");
+      return res.json() as Promise<any[]>;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useLedger(id: number) {
+  return useQuery({
+    queryKey: ["ledger", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/datasets/${id}/ledger`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch ledger");
+      return res.json() as Promise<any[]>;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useTrustBreakdown(id: number) {
+  return useQuery({
+    queryKey: ["trust", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/datasets/${id}/trust`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch trust breakdown");
+      return res.json() as Promise<{
+        completeness: number;
+        freshness: number;
+        consistency: number;
+        schema: number;
+        verification: number;
+        total: number;
+        weights: Record<string, number>;
+      }>;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useVersions(id: number) {
+  return useQuery({
+    queryKey: ["versions", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/datasets/${id}/versions`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch versions");
+      return res.json() as Promise<any[]>;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useSystemEvents(id: number) {
+  return useQuery({
+    queryKey: ["events", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/datasets/${id}/events`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch events");
+      return res.json() as Promise<any[]>;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useStorageProof(id: number) {
+  return useQuery({
+    queryKey: ["proof", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/datasets/${id}/proof`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
     },
     enabled: !!id,
   });

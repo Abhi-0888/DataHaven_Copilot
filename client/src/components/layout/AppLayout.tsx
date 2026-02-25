@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Database, Home, Shield, Sparkles, Settings } from "lucide-react";
+import { Database, Home, Shield, Sparkles, GitBranch, Brain, ScrollText } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -8,10 +8,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { label: "Dashboard", href: "/", icon: Home },
-    { label: "Datasets", href: "/datasets", icon: Database },
     { label: "Verification", href: "/verification", icon: Shield },
+    { label: "AI Ledger", href: "/ledger", icon: Brain },
+    { label: "Lineage", href: "/lineage", icon: GitBranch },
+    { label: "Audit Log", href: "/audit", icon: ScrollText },
     { label: "Copilot", href: "/copilot", icon: Sparkles },
-    { label: "Settings", href: "/settings", icon: Settings },
   ];
 
   return (
@@ -30,27 +31,29 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 px-4 py-6 space-y-1">
           {navItems.map((item) => {
-            const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+            const isActive =
+              location === item.href ||
+              (item.href !== "/" && location.startsWith(item.href));
             return (
-              <Link 
-                key={item.href} 
+              <Link
+                key={item.href}
                 href={item.href}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200
-                  ${isActive 
-                    ? "bg-primary/10 text-primary hover:bg-primary/15" 
+                  relative flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200
+                  ${isActive
+                    ? "bg-primary/10 text-primary hover:bg-primary/15"
                     : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                   }
                 `}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                {item.label}
                 {isActive && (
-                  <motion.div 
-                    layoutId="activeNav" 
+                  <motion.div
+                    layoutId="activeNav"
                     className="absolute left-0 w-1 h-8 bg-primary rounded-r-full"
                   />
                 )}
+                <item.icon className={`w-5 h-5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                {item.label}
               </Link>
             );
           })}
@@ -61,7 +64,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="text-xs font-mono text-muted-foreground mb-1">NETWORK STATUS</div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span className="text-sm font-medium">Mainnet Connected</span>
+              <span className="text-sm font-medium">DataHaven Testnet</span>
             </div>
           </div>
         </div>
@@ -72,17 +75,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
         {/* Background Ambient Orbs */}
         <div className="absolute top-0 -left-40 w-96 h-96 bg-primary/20 rounded-full mix-blend-screen filter blur-[100px] opacity-50 animate-blob pointer-events-none" />
         <div className="absolute top-0 -right-40 w-96 h-96 bg-accent/20 rounded-full mix-blend-screen filter blur-[100px] opacity-50 animate-blob animation-delay-2000 pointer-events-none" />
-        
+
         <header className="h-20 border-b border-white/5 bg-background/50 backdrop-blur-md flex items-center justify-between px-8 z-10 sticky top-0">
           <div className="md:hidden flex items-center gap-3">
             <Database className="w-6 h-6 text-primary" />
             <span className="font-display font-bold text-lg">DataHeaven</span>
           </div>
-          
+
           <div className="hidden md:flex items-center bg-black/40 border border-white/10 rounded-full px-4 py-2 w-96">
-            <input 
-              type="text" 
-              placeholder="Search datasets, insights, hashes..." 
+            <input
+              type="text"
+              placeholder="Search datasets, insights, hashes..."
               className="bg-transparent border-none outline-none text-sm w-full placeholder:text-muted-foreground focus:ring-0"
             />
           </div>
@@ -93,7 +96,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <div className="text-xs text-muted-foreground">Connected Wallet</div>
             </div>
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-primary flex items-center justify-center border-2 border-background">
-              <span className="font-bold text-sm">0x</span>
+              <span className="font-bold text-sm">DH</span>
             </div>
           </div>
         </header>

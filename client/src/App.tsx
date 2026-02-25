@@ -7,12 +7,20 @@ import NotFound from "@/pages/not-found";
 
 import Dashboard from "./pages/Dashboard";
 import DatasetDetails from "./pages/DatasetDetails";
+import Verification from "./pages/Verification";
+import Ledger from "./pages/Ledger";
+import Lineage from "./pages/Lineage";
+import Audit from "./pages/Audit";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard}/>
-      <Route path="/datasets/:id" component={DatasetDetails}/>
+      <Route path="/" component={Dashboard} />
+      <Route path="/datasets/:id" component={DatasetDetails} />
+      <Route path="/verification" component={Verification} />
+      <Route path="/ledger" component={Ledger} />
+      <Route path="/lineage" component={Lineage} />
+      <Route path="/audit" component={Audit} />
       <Route component={NotFound} />
     </Switch>
   );
