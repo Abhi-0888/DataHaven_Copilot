@@ -56,6 +56,48 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    timeline: {
+      method: 'GET' as const,
+      path: '/api/datasets/:id/timeline' as const,
+      responses: {
+        200: z.array(z.any()),
+      }
+    },
+    ledger: {
+      method: 'GET' as const,
+      path: '/api/datasets/:id/ledger' as const,
+      responses: {
+        200: z.array(z.any()),
+      }
+    },
+    trust: {
+      method: 'GET' as const,
+      path: '/api/datasets/:id/trust' as const,
+      responses: {
+        200: z.object({
+          completeness: z.number(),
+          freshness: z.number(),
+          consistency: z.number(),
+          schema: z.number(),
+          verification: z.number(),
+          total: z.number()
+        }),
+      }
+    },
+    versions: {
+      method: 'GET' as const,
+      path: '/api/datasets/:id/versions' as const,
+      responses: {
+        200: z.array(z.any()),
+      }
+    },
+    events: {
+      method: 'GET' as const,
+      path: '/api/datasets/:id/events' as const,
+      responses: {
+        200: z.array(z.any()),
+      }
+    }
   },
   copilot: {
     query: {

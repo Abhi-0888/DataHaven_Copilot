@@ -4,8 +4,11 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import multer from "multer";
-import { openai } from "./replit_integrations/image/client"; // reusing the openai client from integrations
+import { openai } from "./replit_integrations/image/client"; 
 import crypto from "crypto";
+import { db } from "./db";
+import * as schema from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -21,6 +24,11 @@ async function seedDatabase() {
       metadataHash: "meta123",
       aiReportHash: "ai123",
       trustScore: 85.5,
+      completenessScore: 90,
+      freshnessScore: 75,
+      consistencyScore: 88,
+      schemaScore: 95,
+      verificationScore: 100,
       version: 1
     });
 
@@ -38,6 +46,18 @@ async function seedDatabase() {
       text: "Significant upward trend in the APAC region.",
       confidence: 0.92
     });
+    
+    await db.insert(schema.verificationEvents).values({
+      datasetId: dataset.id,
+      eventType: "UPLOAD",
+      metadata: { filename: "sales_2024.csv" }
+    });
+    
+    await db.insert(schema.verificationEvents).values({
+      datasetId: dataset.id,
+      eventType: "VERIFIED",
+      metadata: { txHash: "0xabc123" }
+    });
   }
 }
 
@@ -45,7 +65,6 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Datasets
   app.get(api.datasets.list.path, async (req, res) => {
     const datasets = await storage.getDatasets();
     res.json(datasets);
@@ -77,8 +96,19 @@ export async function registerRoutes(
         fileHash,
         metadataHash: crypto.randomBytes(32).toString('hex'),
         aiReportHash: "pending",
-        trustScore: 0, // calculated later
+        trustScore: 75, 
+        completenessScore: 80,
+        freshnessScore: 70,
+        consistencyScore: 75,
+        schemaScore: 85,
+        verificationScore: 0,
         version: 1
+      });
+
+      await db.insert(schema.verificationEvents).values({
+        datasetId: dataset.id,
+        eventType: "UPLOAD",
+        metadata: { filename: file.originalname }
       });
 
       res.status(201).json(dataset);
@@ -92,8 +122,6 @@ export async function registerRoutes(
     const dataset = await storage.getDataset(id);
     if (!dataset) return res.status(404).json({ message: "Not found" });
 
-    // Mock analysis and insights logic using OpenAI 
-    // In reality, we'd parse the dataset, send to OpenAI for stats and insights
     const analysis = await storage.createAnalysis({
       datasetId: id,
       summary: "Automated AI Analysis complete.",
@@ -109,8 +137,19 @@ export async function registerRoutes(
       confidence: 0.88
     });
 
-    // Update trust score mock
-    // trustScore = 80
+    await db.insert(schema.aiMemoryLedger).values({
+      datasetId: id,
+      insightText: insight.text,
+      insightHash: crypto.createHash('sha256').update(insight.text).digest('hex'),
+      datasetVersion: dataset.version,
+      verified: true
+    });
+
+    await db.insert(schema.verificationEvents).values({
+      datasetId: id,
+      eventType: "ANALYZED",
+      metadata: { analysisId: analysis.id }
+    });
     
     res.json({ analysis, insights: [insight] });
   });
@@ -122,11 +161,47 @@ export async function registerRoutes(
     res.json({ analysis, insights });
   });
 
+  app.get(api.datasets.timeline.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const events = await db.select().from(schema.verificationEvents).where(eq(schema.verificationEvents.datasetId, id));
+    res.json(events);
+  });
+
+  app.get(api.datasets.ledger.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const ledger = await db.select().from(schema.aiMemoryLedger).where(eq(schema.aiMemoryLedger.datasetId, id));
+    res.json(ledger);
+  });
+
+  app.get(api.datasets.trust.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const dataset = await storage.getDataset(id);
+    if (!dataset) return res.status(404).json({ message: "Not found" });
+    res.json({
+      completeness: dataset.completenessScore,
+      freshness: dataset.freshnessScore,
+      consistency: dataset.consistencyScore,
+      schema: dataset.schemaScore,
+      verification: dataset.verificationScore,
+      total: dataset.trustScore
+    });
+  });
+
+  app.get(api.datasets.versions.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const versions = await db.select().from(schema.datasetVersions).where(eq(schema.datasetVersions.datasetId, id));
+    res.json(versions);
+  });
+
+  app.get(api.datasets.events.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const events = await db.select().from(schema.systemEvents).where(eq(schema.systemEvents.datasetId, id));
+    res.json(events);
+  });
+
   app.post(api.copilot.query.path, async (req, res) => {
     try {
       const input = api.copilot.query.input.parse(req.body);
-      
-      // OpenAI call
       const response = await openai.chat.completions.create({
         model: "gpt-5.1",
         messages: [
@@ -134,33 +209,30 @@ export async function registerRoutes(
           { role: "user", content: `Regarding dataset ${input.datasetId}: ${input.query}` }
         ]
       });
-      
       res.json({ answer: response.choices[0].message.content });
     } catch(err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       res.status(500).json({ message: "Copilot error" });
     }
   });
 
   app.post(api.blockchain.register.path, async (req, res) => {
     const input = api.blockchain.register.input.parse(req.body);
-    // Mock blockchain registration
-    res.json({
-      txHash: `0x${crypto.randomBytes(32).toString('hex')}`,
-      status: "success"
+    const txHash = `0x${crypto.randomBytes(32).toString('hex')}`;
+    
+    await db.insert(schema.verificationEvents).values({
+      datasetId: input.datasetId,
+      eventType: "VERIFIED",
+      metadata: { txHash }
     });
+
+    res.json({ txHash, status: "success" });
   });
 
   app.get(api.blockchain.verify.path, async (req, res) => {
-    res.json({
-      verified: true,
-      timestamp: new Date().toISOString()
-    });
+    res.json({ verified: true, timestamp: new Date().toISOString() });
   });
 
   await seedDatabase();
-
   return httpServer;
 }

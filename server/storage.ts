@@ -34,7 +34,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDataset(dataset: InsertDataset): Promise<Dataset> {
-    const [created] = await db.insert(datasets).values(dataset).returning();
+    const [created] = await db.insert(datasets).values({
+      ...dataset,
+      completenessScore: dataset.completenessScore ?? 0,
+      freshnessScore: dataset.freshnessScore ?? 0,
+      consistencyScore: dataset.consistencyScore ?? 0,
+      schemaScore: dataset.schemaScore ?? 0,
+      verificationScore: dataset.verificationScore ?? 0,
+    }).returning();
     return created;
   }
 
